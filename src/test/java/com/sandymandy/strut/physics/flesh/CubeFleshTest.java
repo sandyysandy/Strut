@@ -55,6 +55,32 @@ class CubeFleshTest {
 		return new StrutCube(quads, Vec3d.ZERO, Vec3d.ZERO, new Vec3d(size, size, size), 0, false);
 	}
 
+	/** A plane {@code size} units square lying flat at {@code y}: a cube with no height, wound as the baker winds one, its four edges of no area */
+	private static StrutCube plane(float x, float y, float z, float size) {
+		float s = size / 16f;
+		Vector3f[][] faces = {
+				{p(x, y, z), p(x, y, z + s), p(x, y, z + s), p(x, y, z)},
+				{p(x + s, y, z + s), p(x + s, y, z), p(x + s, y, z), p(x + s, y, z + s)},
+				{p(x + s, y, z), p(x, y, z), p(x, y, z), p(x + s, y, z)},
+				{p(x, y, z + s), p(x + s, y, z + s), p(x + s, y, z + s), p(x, y, z + s)},
+				{p(x, y, z), p(x, y, z + s), p(x + s, y, z + s), p(x + s, y, z)},
+				{p(x, y, z + s), p(x, y, z), p(x + s, y, z), p(x + s, y, z + s)}};
+		Direction[] directions = {Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH, Direction.UP, Direction.DOWN};
+		StrutQuad[] quads = new StrutQuad[6];
+
+		for (int f = 0; f < 6; f++) {
+			Vector3f normal = new Vector3f(directions[f].getOffsetX(), directions[f].getOffsetY(), directions[f].getOffsetZ());
+			StrutVertex[] corners = new StrutVertex[4];
+
+			for (int k = 0; k < 4; k++)
+				corners[k] = new StrutVertex(faces[f][k], 0.1f * k, 0.1f * f, normal);
+
+			quads[f] = new StrutQuad(corners, normal, directions[f]);
+		}
+
+		return new StrutCube(quads, Vec3d.ZERO, Vec3d.ZERO, new Vec3d(size, 0, size), 0, false);
+	}
+
 	private static Vector3f p(float x, float y, float z) {
 		return new Vector3f(x, y, z);
 	}
@@ -112,13 +138,27 @@ class CubeFleshTest {
 	}
 
 	@Test
+	void aPlaneKeepsItsTwoFacesWithTheDoubledNormalAndLosesItsEdges() {
+		StrutMesh mesh = CubeMeshes.mesh(plane(0, 0.6f, 0, 1f));
+
+		assertEquals(2, mesh.polys().length, "the top and the bottom, a quad each; the four edges have no area");
+
+		for (StrutPoly poly : mesh.polys()) {
+			for (StrutVertex vertex : poly.vertices())
+				assertEquals(2f, vertex.normal().length(), 1e-6, "the shader lights a plane by the side the eye is on when its normal is twice as long");
+
+			assertEquals(1f, poly.normal().length(), 1e-6);
+		}
+	}
+
+	@Test
 	void convertingMovesTheCubesOfABoneToMeshesOnce() {
 		BakedStrutModel model = model(cube(0, 0.6f, 0.3f, 4f), cube(0.1f, 0.6f, 0.3f, 2f));
 		GroupBoneDefinition tuft = model.getBone("tuft").orElseThrow();
 
 		assertTrue(CubeMeshes.convertUnder(model, model.getBone("root").orElseThrow()));
 		assertTrue(tuft.getCubes().isEmpty());
-		assertEquals(2, tuft.getMeshes().size());
+		assertEquals(1, tuft.getMeshes().size(), "the cubes of a bone are one mesh");
 		assertFalse(CubeMeshes.convertUnder(model, model.getBone("root").orElseThrow()), "nothing left to convert");
 	}
 
