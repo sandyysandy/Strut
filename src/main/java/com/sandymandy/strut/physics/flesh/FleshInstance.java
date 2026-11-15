@@ -86,7 +86,7 @@ public final class FleshInstance {
 		final GroupBoneDefinition root;
 		final FleshCage cage;
 		final FleshSolver.Region region;
-		final MeshPart[] meshes;
+		MeshPart[] meshes;
 		final Matrix4f matrix = new Matrix4f();
 		final Matrix4f inverse = new Matrix4f();
 		final Matrix3f rotation = new Matrix3f();
@@ -260,10 +260,47 @@ public final class FleshInstance {
 		if (parts.isEmpty())
 			return null;
 
+		// a mesh that rides on the flesh (a bra over a pair of pouches) is named by each of the pair's bones, so each of them made a part of it: it rides on the one
+		// whose middle is nearest it, and only that one moves it
+		keepCarriedOnNearest(parts);
+
 		if (rootsMade != params.bones().size() && params.bones().size() == 2)
 			problems.add("flesh " + name + ": only one of the pair could be made, so it is not pressed by the other");
 
 		return new FleshInstance(name, params, parts.toArray(new Part[0]));
+	}
+
+	private static void keepCarriedOnNearest(List<Part> parts) {
+		java.util.Map<StrutMesh, Part> nearest = new java.util.IdentityHashMap<>();
+		java.util.Map<StrutMesh, Double> distance = new java.util.IdentityHashMap<>();
+
+		for (Part part : parts) {
+			for (MeshPart mesh : part.meshes) {
+				if (!mesh.carried)
+					continue;
+
+				double[] centre = part.cage.centre;
+				double d = Math.pow(centre[0] - mesh.middle[0], 2) + Math.pow(centre[1] - mesh.middle[1], 2) + Math.pow(centre[2] - mesh.middle[2], 2);
+				Double best = distance.get(mesh.mesh);
+
+				if (best == null || d < best) {
+					distance.put(mesh.mesh, d);
+					nearest.put(mesh.mesh, part);
+				}
+			}
+		}
+
+		for (Part part : parts) {
+			List<MeshPart> kept = new ArrayList<>();
+
+			for (MeshPart mesh : part.meshes) {
+				if (!mesh.carried || nearest.get(mesh.mesh) == part)
+					kept.add(mesh);
+			}
+
+			if (kept.size() != part.meshes.length)
+				part.meshes = kept.toArray(new MeshPart[0]);
+		}
 	}
 
 	private static List<Part> region(BakedStrutModel model, GroupBoneDefinition root, Pose rest, FleshParams params, String where, List<String> problems) {
@@ -342,7 +379,7 @@ public final class FleshInstance {
 		int softMeshes = 0;
 
 		for (int m = 0; m < meshes.size(); m++) {
-			carried[m] = m >= ownMeshes || (rootHasMesh && bones.get(m) != root);
+			carried[m] = m >= ownMeshes || (rootHasMesh && bones.get(m) != root && !params.nestedSoft());
 
 			if (!carried[m]) {
 				softMesh = m;

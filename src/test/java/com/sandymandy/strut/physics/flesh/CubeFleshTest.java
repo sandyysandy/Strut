@@ -203,4 +203,99 @@ class CubeFleshTest {
 
 		assertTrue(most[0] > 1e-4f, "the cube moved with the cage");
 	}
+
+	@Test
+	void aMeshCarriedByAPairOfBonesRidesOnOnlyOneOfThem() {
+		GroupBoneDefinition root = new GroupBoneDefinition(null, "root", false, null, null, null);
+		GroupBoneDefinition left = new GroupBoneDefinition(root, "left", false, null, null, null);
+		GroupBoneDefinition right = new GroupBoneDefinition(root, "right", false, null, null, null);
+		GroupBoneDefinition cover = new GroupBoneDefinition(root, "cover", false, null, null, null);
+
+		root.bakePivot(0, 0, 0);
+		left.bakePivot(0, 16, 0);
+		right.bakePivot(0, 16, 0);
+		cover.bakePivot(0, 16, 0);
+		root.getChildBones().add(left);
+		root.getChildBones().add(right);
+		root.getChildBones().add(cover);
+		left.getCubes().add(cube(-0.3f, 0.6f, 0.25f, 8f));
+		right.getCubes().add(cube(0.1f, 0.6f, 0.25f, 8f));
+		cover.getCubes().add(cube(-0.3f, 0.75f, 0.25f, 4f));
+
+		ModelProperties properties = new ModelProperties(null, null, null, null, null, null, null, null, null, null, "test", null, 16, 16, null, new double[] {0, 0, 0}, null);
+		BakedStrutModel model = new BakedStrutModel(List.of(root), properties);
+		PhysicsInstance instance = new PhysicsInstance(model, PhysicsConfig.parse("{\"flesh\": {\"pair\": {\"bones\": [\"left\", \"right\"], \"preset\": \"jelly\", \"carry\": [\"cover\"]}}}", "test"));
+		java.util.Set<Object> meshes = new java.util.HashSet<>();
+		int[] entries = {0};
+		ModelInstance modelInstance = new ModelInstance();
+
+		modelInstance.poseFor(model);
+		modelInstance.resetPoseHistory();
+		instance.entityId(5);
+
+		Pose animated = modelInstance.renderedPose();
+		Pose pose = new Pose(animated.boneCount());
+
+		for (int i = 0; i < 30; i++) {
+			Bodies.nextFrame();
+			pose.copyFrom(animated);
+			instance.update(model, animated, pose, new PhysicsInstance.Sample(i * 0.05, 64, 0, 180f, i / 60.0), new PhysicsControls());
+		}
+
+		instance.clothDeforms((mesh, deform) -> {
+			meshes.add(mesh);
+			entries[0]++;
+		});
+
+		assertEquals(3, entries[0], "the two pouches and the cover, each once");
+		assertEquals(3, meshes.size());
+	}
+
+	/** How many of the meshes the flesh moves are rigid riders, after some frames, for a pouch with a cube of its own and a bone under it that has one too */
+	private static int riders(String extra) {
+		GroupBoneDefinition root = new GroupBoneDefinition(null, "root", false, null, null, null);
+		GroupBoneDefinition pouch = new GroupBoneDefinition(root, "pouch", false, null, null, null);
+		GroupBoneDefinition under = new GroupBoneDefinition(pouch, "under", false, null, null, null);
+
+		root.bakePivot(0, 0, 0);
+		pouch.bakePivot(0, 16, 0);
+		under.bakePivot(0, 16, 0);
+		root.getChildBones().add(pouch);
+		pouch.getChildBones().add(under);
+		pouch.getCubes().add(cube(-0.1f, 0.6f, 0.25f, 8f));
+		under.getCubes().add(cube(0.05f, 0.6f, 0.25f, 8f));
+
+		ModelProperties properties = new ModelProperties(null, null, null, null, null, null, null, null, null, null, "test", null, 16, 16, null, new double[] {0, 0, 0}, null);
+		BakedStrutModel model = new BakedStrutModel(List.of(root), properties);
+		PhysicsInstance instance = new PhysicsInstance(model, PhysicsConfig.parse("{\"flesh\": {\"p\": {\"bone\": \"pouch\", \"preset\": \"jelly\"" + extra + "}}}", "test"));
+		ModelInstance modelInstance = new ModelInstance();
+
+		modelInstance.poseFor(model);
+		modelInstance.resetPoseHistory();
+		instance.entityId(5);
+
+		Pose animated = modelInstance.renderedPose();
+		Pose pose = new Pose(animated.boneCount());
+
+		for (int i = 0; i < 30; i++) {
+			Bodies.nextFrame();
+			pose.copyFrom(animated);
+			instance.update(model, animated, pose, new PhysicsInstance.Sample(i * 0.05, 64, 0, 180f, i / 60.0), new PhysicsControls());
+		}
+
+		int[] count = {0};
+
+		instance.clothDeforms((mesh, deform) -> {
+			if (deform instanceof com.sandymandy.strut.animation.state.RigidDeform)
+				count[0]++;
+		});
+
+		return count[0];
+	}
+
+	@Test
+	void meshesOnBonesUnderARootThatHasMeshesRideRigidlyUnlessNestedIsSoft() {
+		assertEquals(1, riders(""), "by default a mesh on a bone under the pouch is a rigid rider");
+		assertEquals(0, riders(", \"nested\": \"soft\""), "with nested soft it is soft like the pouch's own");
+	}
 }

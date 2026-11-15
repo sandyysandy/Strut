@@ -180,4 +180,16 @@ class AnimationPlaybackTest {
 		assertEquals(atChange, after.elapsedTicks(30, 0), EPSILON, "no jump at the moment of the change");
 		assertEquals(atChange + 2, after.elapsedTicks(31, 0), EPSILON, "and it runs at the new rate after it");
 	}
+
+	@Test
+	@DisplayName("a playback that has not started yet shows its first frame, not the end of a loop")
+	void notYetStartedIsTheFirstFrame() {
+		AnimationPlayback looping = playback(100, 0, 1, LoopMode.LOOP);
+
+		/* the client's world time is a tick behind the tick the server stamped the playback with */
+		assertEquals(0, looping.sampleTick(40, 99, 0.5f), EPSILON, "half a tick before its start is still the first frame");
+		assertEquals(0, looping.sampleTick(40, 98, 0f), EPSILON);
+		assertEquals(5, looping.sampleTick(40, 105, 0f), EPSILON, "once it has started it runs as before");
+		assertEquals(10, playback(100, 10, 1, LoopMode.LOOP).sampleTick(40, 99, 0f), EPSILON, "a playback begun part way holds that frame until it starts");
+	}
 }

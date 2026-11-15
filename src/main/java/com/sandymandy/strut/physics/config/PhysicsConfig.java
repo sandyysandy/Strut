@@ -847,6 +847,7 @@ public final class PhysicsConfig {
 		float weight = 1f;
 		float[] softCenter = null;
 		float softRadius = 0f;
+		boolean nestedSoft = false;
 		List<String> carry = new ArrayList<>();
 		Set<String> collides = new LinkedHashSet<>(List.of("body", "other", "players", "mobs", "world"));
 		List<String> presses = new ArrayList<>(List.of("steve*", "arm*", "lowerArm*", "forearm*", "hand*"));
@@ -898,6 +899,14 @@ public final class PhysicsConfig {
 							bonePivot = text.equals("bone");
 						}
 					}
+					case "nested" -> {
+						String text = v.getAsString().trim().toLowerCase(java.util.Locale.ROOT);
+
+						if (!text.equals("soft") && !text.equals("rigid"))
+							throw new IllegalArgumentException("not a choice: " + text + " (soft or rigid)");
+
+						nestedSoft = text.equals("soft");
+					}
 					case "meat" -> meat = Math.max(0f, Math.min(2f, v.getAsFloat()));
 					case "bulge" -> bulge = Math.max(0f, v.getAsFloat());
 					case "rigid" -> rigid = Math.max(0f, v.getAsFloat());
@@ -938,7 +947,7 @@ public final class PhysicsConfig {
 		soft.put(name, new FleshParams(List.copyOf(bones), softness, shapeSoftness != null ? shapeSoftness : softness, limit, reach, tip, up, anchorFrom, anchorHold,
 				anchorFull, depthFrom, depthTo, lumpDamping, inertia, lumpShare, sideStiffness, stiffen, firmness, nodeDamping, shape, link, gravity, squeezeIn,
 				squeezeOut, squeezeStiffness, rim, volume, bulge, rigid, rise, sway, turn, dressedStiffness, dressedLimit, dressedCouple, Set.copyOf(collides),
-				List.copyOf(presses), weight, softCenter, softRadius, List.copyOf(carry), meat, bonePivot, pivot));
+				List.copyOf(presses), weight, softCenter, softRadius, List.copyOf(carry), meat, bonePivot, pivot, nestedSoft));
 
 		if (!old.isEmpty())
 			warnings.add(where + ": " + String.join(", ", old) + " were for the old per-vertex flesh and do nothing now; the cage moves it (see softness, limit, firmness, lump, node)");

@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -71,6 +72,31 @@ class ShaderSourcesTest {
 		compile(tool, "fragment", "frag", source("com.sandymandy.strut.renderer.gpu.GpuRenderBackend", "FRAGMENT_SOURCE"));
 		compile(tool, "prepass", "comp", source("com.sandymandy.strut.renderer.iris.IrisPrePass", "COMPUTE_SOURCE"));
 		compile(tool, "pack", "comp", source("com.sandymandy.strut.renderer.iris.IrisPrePass", "PACK_COMPUTE_SOURCE"));
+	}
+
+	/**
+	 * Words GLSL reserves (for later versions, or for the languages it grew out of). The reference compiler lets most of them through as names; a driver's own does not, and
+	 * every model fails to draw on that machine with a syntax error that names the line after them
+	 */
+	private static final java.util.Set<String> RESERVED = java.util.Set.of("packed", "common", "partition", "active", "asm", "class", "union", "enum", "typedef", "template", "this",
+			"resource", "goto", "inline", "noinline", "public", "static", "extern", "external", "interface", "long", "short", "half", "fixed", "unsigned", "superp", "input", "output",
+			"filter", "sizeof", "cast", "namespace", "using", "sampler3DRect", "hvec2", "hvec3", "hvec4", "fvec2", "fvec3", "fvec4");
+
+	@Test
+	void noShaderUsesAReservedWordAsAName() throws Exception {
+		String[][] sources = {
+				{"vertex", source("com.sandymandy.strut.renderer.gpu.GpuRenderBackend", "VERTEX_SOURCE")},
+				{"fragment", source("com.sandymandy.strut.renderer.gpu.GpuRenderBackend", "FRAGMENT_SOURCE")},
+				{"prepass", source("com.sandymandy.strut.renderer.iris.IrisPrePass", "COMPUTE_SOURCE")},
+				{"pack", source("com.sandymandy.strut.renderer.iris.IrisPrePass", "PACK_COMPUTE_SOURCE")}};
+
+		for (String[] shader : sources) {
+			String code = shader[1].replaceAll("(?s)/\\*.*?\\*/", " ").replaceAll("//[^\n]*", " ");
+			java.util.regex.Matcher words = java.util.regex.Pattern.compile("[A-Za-z_][A-Za-z_0-9]*").matcher(code);
+
+			while (words.find())
+				assertFalse(RESERVED.contains(words.group()), shader[0] + " uses the reserved word " + words.group() + " near: " + code.substring(Math.max(0, words.start() - 40), Math.min(code.length(), words.end() + 40)).replace('\n', ' '));
+		}
 	}
 
 	@Test

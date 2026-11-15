@@ -120,7 +120,13 @@ public record AnimationPlayback(String controller, String animation, long startG
 	 * @return A tick within {@code [0, clipLengthTicks]}
 	 */
 	public double sampleTick(double clipLengthTicks, long gameTime, float partialTick) {
-		double elapsed = elapsedTicks(gameTime, partialTick);
+		/*
+		 * A playback that has not started yet is at its first frame, not before it. The client's world time can be a tick behind the server's when a playback arrives (the
+		 * server stamps it with its own tick), so the time since the start is briefly negative; a looping clip would wrap that round to near its end, and the body showed the
+		 * end of the clip for a frame before catching up. A scene that restarts a fast clip on every cue made that a visible snap.
+		 */
+		double sinceStart = Math.max(0.0, gameTime - this.startGameTick + partialTick);
+		double elapsed = this.startOffsetTicks + sinceStart * this.playbackRate;
 
 		// a looping clip with no length (only molang drives it) has no end to wrap at: its time runs on
 		if (clipLengthTicks <= 0)

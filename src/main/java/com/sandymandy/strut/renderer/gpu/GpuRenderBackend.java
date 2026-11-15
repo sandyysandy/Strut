@@ -325,9 +325,9 @@ public final class GpuRenderBackend {
 			    for (int i = 0; i < 4; i++) {
 			        lightKey[i] = vec3(instData.lights[i * 3], instData.lights[i * 3 + 1], instData.lights[i * 3 + 2]);
 
-			        int packed = instData.lightColour[i];
+			        int colourWord = instData.lightColour[i];
 
-			        lightColour[i] = vec3(float((packed >> 16) & 255), float((packed >> 8) & 255), float(packed & 255)) / 255.0;
+			        lightColour[i] = vec3(float((colourWord >> 16) & 255), float((colourWord >> 8) & 255), float(colourWord & 255)) / 255.0;
 			    }
 
 			    strutCustom = vec4(instData.custom[0], instData.custom[1], instData.custom[2], instData.custom[3]);

@@ -55,6 +55,8 @@ import java.util.Set;
  * @param carry Other bones whose meshes ride on the region as one rigid piece, besides the meshes under its root
  * @param bonePivot Whether the region swings about its root bone's own pivot (the default) rather than about the base of the cage it is fitted with
  * @param pivot Where it swings about instead, in the root bone's space (blocks), or null; wins over {@code bonePivot}
+ * @param nestedSoft Whether the meshes on bones under a root that has meshes of its own are soft like the root's (true), or ride on it as rigid pieces (false, the
+ *                   default: a tip on a pouch)
  * @param meat 0 to 1 and more: how heavy and fleshy it feels: its swing and its nodes damped more (less bounce), and more sag
  */
 public record FleshParams(List<String> bones, float softness, float shapeSoftness, float limit, float reach, @Nullable float[] tip, @Nullable float[] up,
@@ -62,7 +64,7 @@ public record FleshParams(List<String> bones, float softness, float shapeSoftnes
 						 float sideStiffness, float stiffen, float firmness, float nodeDamping, float shape, float link, float gravity, float squeezeIn,
 						 float squeezeOut, float squeezeStiffness, float rim, float volume, float bulge, float rigid, float rise, float sway, float turn,
 						 float dressedStiffness, float dressedLimit, float dressedCouple, Set<String> collidesWith, List<String> presses, float weight,
-						 @Nullable float[] softCenter, float softRadius, List<String> carry, float meat, boolean bonePivot, @Nullable float[] pivot) {
+						 @Nullable float[] softCenter, float softRadius, List<String> carry, float meat, boolean bonePivot, @Nullable float[] pivot, boolean nestedSoft) {
 	/** These parameters with {@code weight} scaled */
 	public FleshParams scaled(float weightScale) {
 		if (weightScale == 1f)
@@ -72,6 +74,6 @@ public record FleshParams(List<String> bones, float softness, float shapeSoftnes
 				this.anchorFull, this.depthFrom, this.depthTo, this.lumpDamping, this.inertia, this.lumpShare, this.sideStiffness, this.stiffen, this.firmness,
 				this.nodeDamping, this.shape, this.link, this.gravity, this.squeezeIn, this.squeezeOut, this.squeezeStiffness, this.rim, this.volume, this.bulge,
 				this.rigid, this.rise, this.sway, this.turn, this.dressedStiffness, this.dressedLimit, this.dressedCouple, this.collidesWith, this.presses,
-				Math.max(0f, Math.min(1f, this.weight * weightScale)), this.softCenter, this.softRadius, this.carry, this.meat, this.bonePivot, this.pivot);
+				Math.max(0f, Math.min(1f, this.weight * weightScale)), this.softCenter, this.softRadius, this.carry, this.meat, this.bonePivot, this.pivot, this.nestedSoft);
 	}
 }
