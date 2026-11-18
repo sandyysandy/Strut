@@ -75,9 +75,9 @@ StrutPlayers.clearAnchor(player);</code></pre>
 <pre><code>StrutPlayersClient.drawBody(context, bodyId, variant, x1, y1, x2, y2, 30, yawDegrees, pitchDegrees, player -&gt; ClientFlags.preview(true));</code></pre>
 <p>With a yaw (0 faces the viewer, 180 shows the back) and a pitch in place of the mouse, a preview the player drags round. The last argument, which may be null, runs on the preview player each time it is drawn, before it is: the preview player is one for every call, so a model that reads a client-only flag from it (the stripped form) is told it there.</p>
 <h2>The camera and bones, chosen at run time</h2>
-<pre><code>StrutPlayersClient.eyeBone(player -&gt; inScene(player) ? "boyCam" : null);          // null: the body's
+<pre><code>StrutPlayersClient.eyeBone(player -&gt; inScene(player) ? "playerCam" : null);          // null: the body's
 StrutPlayersClient.firstPerson(player -&gt; option ? FirstPersonMode.IMMERSIVE : FirstPersonMode.VANILLA);
-Vec3d at = StrutPlayersClient.bonePosition(player, "boyCam");   // relative to the player, in world axes, as last drawn</code></pre>
+Vec3d at = StrutPlayersClient.bonePosition(player, "playerCam");   // relative to the player, in world axes, as last drawn</code></pre>
 <p><code>bonePosition</code> answers null the first time it is asked for a bone (it starts keeping track of it), then the place as of the last frame; a bone not asked for for two seconds is let go of. It is how a rider is put at a bone.</p>
 <h2 id="preview">Showing a body in a menu</h2>
 <pre><code>StrutPlayersClient.drawBody(context, bodyId, "red", x1, y1, x2, y2, 30, mouseX, mouseY);</code></pre>

@@ -606,9 +606,10 @@ public final class ModelInstance {
 	 * GPU visual buffer instead and {@code TEXTURE} into a group key, so
 	 * both are skipped here rather than silently ignored somewhere less obvious
 	 * <p>
-	 * {@link #POSE_PROPERTIES} - everything except {@code CHILDREN_HIDDEN} - inherits down the bone
-	 * tree via {@link #resolveInherited}: a bone with no override of its own inherits its nearest
-	 * ancestor's, and a bone with its own always wins outright. {@code CHILDREN_HIDDEN} deliberately
+	 * {@code HIDDEN} inherits down the bone tree via {@link #resolveInherited}: a bone with no override
+	 * of its own inherits its nearest ancestor's, and a bone with its own always wins outright. {@code POSITION},
+	 * {@code ROTATION} and {@code SCALE} apply to the exact bone only, since the bone's matrix carries them to its
+	 * children and a copy on each child would replace what the animation gave it. {@code CHILDREN_HIDDEN} deliberately
 	 * does not: it stays literal-only (applied only to the exact bone it was set on, via
 	 * the literal pass of {@link #posePlan}), because its whole purpose is the one case inheritance itself cannot
 	 * express - "hide every descendant unconditionally, with no way for any of them to opt back out."
@@ -706,8 +707,27 @@ public final class ModelInstance {
 
 		GroupBoneDefinition[] flatBones = this.boundModel.flatBones();
 
-		for (OverrideProperty property : POSE_PROPERTIES)
-			resolveInherited(overrides, activeKeys, property, flatBones, (index, value) -> this.plan.add(index, property, value));
+		// hidden is the one property that is handed down: what a bone hides its children hide with it. A position, a rotation and a scale reach the children through the
+		// bone's own matrix already, so handing them down as well would put the value on each child in place of what the animation gave it (a scale of 0 that hides a
+		// bone would be undone by a scale set on the bone above it) and apply it twice over to what is drawn
+		for (OverrideProperty property : POSE_PROPERTIES) {
+			if (property == OverrideProperty.HIDDEN) {
+				resolveInherited(overrides, activeKeys, property, flatBones, (index, value) -> this.plan.add(index, property, value));
+
+				continue;
+			}
+
+			for (OverrideKey key : activeKeys) {
+				if (key.property() != property)
+					continue;
+
+				BoneOverride override = overrides.resolve(key.bone(), property);
+				Optional<GroupBoneDefinition> definition = override == null ? Optional.empty() : this.boundModel.getBone(key.bone());
+
+				if (definition.isPresent())
+					this.plan.add(definition.get().getIndex(), property, override.value());
+			}
+		}
 
 		for (OverrideKey key : activeKeys) {
 			if (key.property() != OverrideProperty.CHILDREN_HIDDEN)

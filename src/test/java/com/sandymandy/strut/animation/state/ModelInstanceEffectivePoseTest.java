@@ -318,6 +318,27 @@ class ModelInstanceEffectivePoseTest {
 	}
 
 	@Test
+	void aScaleOverrideStaysOnTheNamedBoneAndLeavesTheAnimatedScaleOfTheBonesUnderIt() {
+		BakedStrutModel model = buildDeepModel();
+		ModelInstance instance = readyInstance(model);
+		int childIndex = model.getBone("child").orElseThrow().getIndex();
+		int grandchildIndex = model.getBone("grandchild").orElseThrow().getIndex();
+
+		// the animation hides the grandchild by scaling it to nothing
+		instance.renderedPose().setScale(grandchildIndex, 0f, 0f, 0f);
+
+		ClientBoneOverrideStates.forEntity(this.entityId).setLocal("child", OverrideProperty.SCALE,
+				new OverrideValue.Vec3Value(1.5f, 1.5f, 1.5f), OverrideScope.PERSISTENT, 0, 1f, 0f);
+
+		instance.prepareForRender(this.entityId);
+
+		Pose effective = instance.effectivePose();
+
+		assertEquals(1.5f, effective.getScaleX(childIndex), 1.0e-6f, "the named bone takes the override");
+		assertEquals(0f, effective.getScaleX(grandchildIndex), 1.0e-6f, "a bone under it keeps what the animation gave it: the scale reaches it through the hierarchy");
+	}
+
+	@Test
 	void aBonesOwnHiddenOverrideWinsOverAnInheritedOne() {
 		BakedStrutModel model = buildDeepModel();
 		ModelInstance instance = readyInstance(model);
